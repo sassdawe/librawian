@@ -18,6 +18,11 @@ class ExcelTarget:
             raise RuntimeError("Live Excel requires Windows or macOS. Use Clipboard mode here.")
         import xlwings as xw
 
+        if sys.platform == "win32":
+            from xlwings import _xlwindows
+
+            # xlwings otherwise retries rejected COM calls forever on the UI thread.
+            _xlwindows.N_COM_ATTEMPTS = 1
         app = xw.apps.active
         if app is None or app.books.active is None:
             raise RuntimeError("Open your existing workbook in desktop Excel first.")

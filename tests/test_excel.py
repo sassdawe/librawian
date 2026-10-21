@@ -79,11 +79,23 @@ class ExcelTests(unittest.TestCase):
     @patch("librawian.excel.sys.platform", "win32")
     def test_connect_only_attaches_to_running_excel(self):
         xw = Mock()
+        xw._xlwindows.N_COM_ATTEMPTS = 0
         xw.apps.active.selection = self.selection
         with patch.dict("sys.modules", {"xlwings": xw}):
             self.assertEqual(ExcelTarget.connect().row, 5)
+            self.assertEqual(xw._xlwindows.N_COM_ATTEMPTS, 1)
             xw.App.assert_not_called()
             xw.Book.assert_not_called()
+
+    @patch("librawian.excel.sys.platform", "win32")
+    def test_bounds_busy_retries_before_accessing_excel(self):
+        xw = Mock()
+        xw._xlwindows.N_COM_ATTEMPTS = 0
+        type(xw.apps).active = PropertyMock(side_effect=RuntimeError("Excel is busy"))
+        with patch.dict("sys.modules", {"xlwings": xw}):
+            with self.assertRaisesRegex(RuntimeError, "Excel is busy"):
+                ExcelTarget.connect()
+        self.assertEqual(xw._xlwindows.N_COM_ATTEMPTS, 1)
 
     @patch("librawian.excel.sys.platform", "win32")
     def test_no_running_excel_is_actionable(self):
